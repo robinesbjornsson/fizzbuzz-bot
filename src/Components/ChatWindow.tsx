@@ -4,6 +4,7 @@ import { fizzBuzz } from '../utils/fizzBuzz'
 import { v4 as uuid } from 'uuid'
 import ChatMessage from './ChatMessage'
 import useScore from '../utils/useScore'
+import { useCallback } from 'react'
 
 type UUID = string
 
@@ -16,7 +17,6 @@ type Message = {
 const ChatWindow: React.FC = () => {
   const [whoStarts, setWhoStarts] = useState<string>('')
   const [currentNumber, setCurrentNumber] = useState<number>(1)
-
   const [gameStarted, setGameStarted] = useState<boolean>(false)
   const [gameEnded, setGameEnded] = useState<boolean>(false)
   const [inputValue, setInputValue] = useState<string>('')
@@ -48,8 +48,28 @@ const ChatWindow: React.FC = () => {
   }, [highScore])
 
   useEffect(() => {
-    localStorage.setItem('pastScores', JSON.stringify(pastScores))
+    return () => {
+      localStorage.setItem('pastScores', JSON.stringify(pastScores))
+    }
   }, [pastScores])
+  useEffect(() => {
+    if (gameEnded) {
+      localStorage.setItem('pastScores', JSON.stringify(pastScores))
+      setGameEnded(false)
+    }
+  }, [gameEnded, pastScores])
+
+  const handleGameStart = () => {
+    const starter = Math.random() < 0.5 ? 'user' : 'bot'
+    setWhoStarts(starter)
+    setGameStarted(true)
+    addMessage('start', 'user')
+  }
+
+  const resetGame = () => {
+    resetScore() // This will set the score back to 0
+    setGameEnded(true) // This will trigger the useEffect to save the past score
+  }
 
   useEffect(() => {
     if (gameStarted && whoStarts === 'bot') {
@@ -75,34 +95,6 @@ const ChatWindow: React.FC = () => {
       sender,
     }
     setMessages((prevMessages) => [...prevMessages, newMessage])
-  }
-
-  const handleGameStart = () => {
-    const starter = Math.random() < 0.5 ? 'user' : 'bot'
-    setWhoStarts(starter)
-    setGameStarted(true)
-    addMessage('start', 'user')
-  }
-
-  const resetGame = () => {
-    resetScore() // This will set the score back to 0
-    setGameEnded(true) // This will trigger the useEffect to save the past score
-  }
-
-  const handleUserResponse = (userResponse: string) => {
-    if (userResponse === 'start' && !gameStarted) {
-      handleGameStart()
-    } else if (userResponse === 'score') {
-      const pastScoreMessages = pastScores
-        .map((score, index) => `Game ${index + 1}: ${score}`)
-        .join('\n')
-      addMessage(`Your past scores:\n${pastScoreMessages}`, 'bot')
-    } else if (userResponse === 'highscore') {
-      addMessage(`Your high score is: ${highScore}`, 'bot')
-    } else if (gameStarted) {
-      processGameResponse(userResponse)
-    }
-    setInputValue('')
   }
 
   const processGameResponse = (userResponse: string) => {
@@ -133,6 +125,25 @@ const ChatWindow: React.FC = () => {
       setCurrentNumber(nextNumber + 1)
     }
   }
+
+  const handleUserResponse = useCallback(
+    (userResponse: string) => {
+      if (userResponse === 'start' && !gameStarted) {
+        handleGameStart()
+      } else if (userResponse === 'score') {
+        const pastScoreMessages = pastScores
+          .map((score, index) => `Game ${index + 1}: ${score}`)
+          .join('\n')
+        addMessage(`Your past scores:\n${pastScoreMessages}`, 'bot')
+      } else if (userResponse === 'highscore') {
+        addMessage(`Your high score is: ${highScore}`, 'bot')
+      } else if (gameStarted) {
+        processGameResponse(userResponse)
+      }
+      setInputValue('')
+    },
+    [gameStarted, score, highScore, pastScores, processGameResponse]
+  )
 
   return (
     <>
