@@ -66,9 +66,13 @@ const ChatWindow: React.FC = () => {
     addMessage('start', 'user')
   }
 
-  const resetGame = () => {
-    resetScore() // This will set the score back to 0
-    setGameEnded(true) // This will trigger the useEffect to save the past score
+  const handleGameEnd = () => {
+    savePastScore()
+    resetScore()
+    addMessage("Game has ended. Type 'start' to play again!", 'bot')
+    setGameStarted(false)
+    setGameEnded(true)
+    setCurrentNumber(1)
   }
 
   useEffect(() => {
@@ -84,7 +88,7 @@ const ChatWindow: React.FC = () => {
   useEffect(() => {
     if (gameEnded) {
       savePastScore()
-      setGameEnded(false) // Reset the flag
+      setGameEnded(false)
     }
   }, [gameEnded, savePastScore])
 
@@ -130,6 +134,8 @@ const ChatWindow: React.FC = () => {
     (userResponse: string) => {
       if (userResponse === 'start' && !gameStarted) {
         handleGameStart()
+      } else if (userResponse.trim().toLowerCase() === 'end' && gameStarted) {
+        handleGameEnd()
       } else if (userResponse === 'score') {
         const pastScoreMessages = pastScores
           .map((score, index) => `Game ${index + 1}: ${score}`)
